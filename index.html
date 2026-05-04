@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Pradakshina" />
+<meta name="theme-color" content="#2a0a05" />
+<title>Pradakshina · 108</title>
+
+<!-- Inline PWA manifest (data URI) so this works as a single file -->
+<link rel="manifest" href='data:application/manifest+json,{"name":"Pradakshina Counter","short_name":"Pradakshina","start_url":".","display":"standalone","orientation":"portrait","background_color":"%237a1a0a","theme_color":"%237a1a0a"}' />
+
+<!-- App icon (golden Om on saffron) embedded as data URI -->
+<link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" rx="36" fill="%23c2410c"/><text x="90" y="128" font-size="120" text-anchor="middle" fill="%23fde68a" font-family="serif">%E0%A5%90</text></svg>' />
+
+<style>
+  :root {
+    --bg-1: #2a0a05;
+    --bg-2: #7a1a0a;
+    --accent: #f59e0b;
+    --accent-2: #fde68a;
+    --ink: #fff7ed;
+    --temple: #fde68a;
+    --shadow: rgba(0,0,0,0.4);
+  }
+
+  /* ---- THEMES ---- */
+  body[data-theme="dawn"]    { --bg-1:#2a0a05; --bg-2:#7a1a0a; --accent:#f59e0b; --accent-2:#fde68a; --ink:#fff7ed; --temple:#fde68a; }
+  body[data-theme="dusk"]    { --bg-1:#1a0033; --bg-2:#4c1d95; --accent:#fbbf24; --accent-2:#fde047; --ink:#f5f3ff; --temple:#fde68a; }
+  body[data-theme="forest"]  { --bg-1:#052e16; --bg-2:#14532d; --accent:#fbbf24; --accent-2:#fef3c7; --ink:#ecfdf5; --temple:#fde68a; }
+  body[data-theme="ganga"]   { --bg-1:#082f49; --bg-2:#075985; --accent:#facc15; --accent-2:#fef9c3; --ink:#f0f9ff; --temple:#fef3c7; }
+  body[data-theme="saffron"] { --bg-1:#7c2d12; --bg-2:#c2410c; --accent:#fde047; --accent-2:#fef9c3; --ink:#fffbeb; --temple:#fef3c7; }
+  body[data-theme="night"]   { --bg-1:#020617; --bg-2:#1e293b; --accent:#e0c068; --accent-2:#fef3c7; --ink:#f1f5f9; --temple:#fde68a; }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    transition: background 1.2s ease;
+    position: fixed;
+    top: 0; left: 0;
+    overscroll-behavior: none;
+    /* Full-bleed background that extends behind status bar / home indicator */
+    background: var(--bg-1);
+  }
+  /* Dedicated full-bleed background layer */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at top, var(--bg-2), var(--bg-1) 70%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Subtle starry texture */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.35), transparent),
+      radial-gradient(2px 2px at 85% 20%, rgba(255,255,255,0.5), transparent);
+    pointer-events: none;
+    opacity: 0.6;
+    z-index: 0;
+  }
+
+  .app {
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    width: 100dvw;
+    display: flex; flex-direction: column;
+    /* Just enough top padding to clear status bar; less than max() of inset */
+    padding-top: calc(env(safe-area-inset-top) + 4px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
+    padding-left: max(env(safe-area-inset-left), 14px);
+    padding-right: max(env(safe-area-inset-right), 14px);
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+  }
+
+  /* ---- HEADER ---- */
+  .header {
+    flex: 0 0 auto;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 2px;
+  }
+  .title {
+    font-family: 'Cinzel', 'Cormorant Garamond', serif;
+    font-size: clamp(18px, 5vw, 24px);
+    letter-spacing: 4px;
+    color: var(--accent-2);
+    text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(245,158,11,0.4);
+  }
+  .icon-btn {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(253,230,138,0.25);
+    color: var(--accent-2);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    backdrop-filter: blur(10px);
+    -webkit-tap-highlight-color: transparent;
+    flex: 0 0 auto;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+
+  /* ---- TEMPLE GRAPHIC ---- */
+  .temple-wrap {
+    flex: 0 1 auto;
+    display: flex; justify-content: center;
+    margin-top: 4px;
+    filter: drop-shadow(0 6px 16px var(--shadow));
+    min-height: 0;
+  }
+  .temple-svg {
+    width: clamp(110px, 26vw, 180px);
+    height: auto;
+    max-height: 16vh;
+  }
+  .temple-svg .body { fill: var(--temple); }
+  .temple-svg .accent { fill: var(--accent); }
+  .temple-svg .dome { fill: var(--accent); }
+
+  /* ---- COUNTER ---- */
+  .counter-area {
+    flex: 1 1 auto;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: clamp(4px, 1.5vh, 14px);
+    padding: clamp(4px, 1vh, 10px) 0;
+    min-height: 0;
+  }
+  .label {
+    font-size: clamp(11px, 3vw, 14px);
+    letter-spacing: 6px; text-transform: uppercase;
+    color: var(--accent-2); opacity: 0.8;
+  }
+  .count {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(72px, 20vw, 150px);
+    font-weight: 600;
+    line-height: 1;
+    color: var(--accent-2);
+    text-shadow: 0 0 30px rgba(245,158,11,0.5), 0 4px 12px rgba(0,0,0,0.5);
+    transition: transform 0.15s ease;
+  }
+  .count.bump { transform: scale(1.12); }
+  .of-108 {
+    font-size: clamp(14px, 4vw, 18px);
+    opacity: 0.7; letter-spacing: 3px;
+  }
+
+  /* ---- BIG TAP BUTTON ---- */
+  .tap-zone {
+    flex: 0 0 auto;
+    margin: clamp(4px, 1vh, 12px) 0;
+    display: grid; place-items: center;
+  }
+  .tap-btn {
+    /* Sizes responsively from small phones to Pro Max */
+    width: clamp(280px, 78vw, 420px);
+    height: clamp(280px, 78vw, 420px);
+    max-height: 42vh;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background:
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15), transparent 60%),
+      radial-gradient(circle at center, var(--bg-2), var(--bg-1));
+    color: var(--accent-2);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(24px, 7vw, 34px);
+    letter-spacing: 7px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow:
+      0 0 0 8px rgba(245,158,11,0.08),
+      0 0 60px rgba(245,158,11,0.25),
+      inset 0 0 40px rgba(0,0,0,0.3);
+    transition: transform 0.08s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    /* Critical for fast taps on iOS */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tap-btn::before {
+    content: "ॐ";
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: clamp(110px, 32vw, 170px);
+    font-family: serif;
+    color: var(--accent);
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  .tap-btn.pressed {
+    transform: scale(0.95);
+    box-shadow:
+      0 0 0 4px rgba(245,158,11,0.15),
+      0 0 80px rgba(245,158,11,0.5),
+      inset 0 0 60px rgba(0,0,0,0.4);
+  }
+  .tap-btn span { position: relative; z-index: 1; }
+
+  /* ---- BOTTOM BAR ---- */
+  .actions {
+    flex: 0 0 auto;
+    display: flex; gap: 10px; justify-content: center;
+    padding-bottom: 4px;
+  }
+  .pill {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(253,230,138,0.3);
+    color: var(--accent-2);
+    padding: clamp(8px, 2vw, 11px) clamp(12px, 3.5vw, 18px);
+    border-radius: 24px;
+    font-family: inherit;
+    font-size: clamp(12px, 3vw, 14px);
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .pill:active { transform: scale(0.95); }
+
+  /* ---- SETTINGS PANEL ---- */
+  .panel {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    padding: env(safe-area-inset-top, 20px) 20px env(safe-area-inset-bottom, 20px);
+  }
+  .panel.open { transform: translateY(0); }
+  .panel h2 {
+    font-family: 'Cinzel', serif;
+    color: var(--accent-2);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-size: 20px;
+    margin: 10px 0 20px;
+    text-align: center;
+  }
+  .section { margin-bottom: 26px; }
+  .section h3 {
+    color: var(--accent);
+    font-size: 13px; letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+    opacity: 0.85;
+  }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch {
+    width: 56px; height: 56px; border-radius: 14px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .swatch.active { border-color: var(--accent-2); transform: scale(1.08); }
+  .swatch span {
+    position: absolute; bottom: -18px; left: 0; right: 0;
+    text-align: center; font-size: 10px; letter-spacing: 1px;
+    color: var(--accent-2); opacity: 0.7;
+  }
+  .sounds { display: flex; flex-direction: column; gap: 8px; }
+  .sound-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.05);
+    padding: 12px 16px; border-radius: 12px;
+    border: 1px solid rgba(253,230,138,0.15);
+  }
+  .sound-row .name { color: var(--ink); font-size: 16px; }
+  .sound-row .controls { display: flex; gap: 8px; }
+  .mini-btn {
+    background: transparent;
+    border: 1px solid rgba(253,230,138,0.3);
+    color: var(--accent-2);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-family: inherit;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .mini-btn.selected {
+    background: var(--accent);
+    color: var(--bg-1);
+    border-color: var(--accent);
+  }
+  .sound-select {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(253,230,138,0.35);
+    color: var(--ink);
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23fde68a' d='M6 8L0 0h12z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+  }
+  .sound-select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sound-select option {
+    background: #1a0a05;
+    color: var(--ink);
+    padding: 8px;
+  }
+  .sound-select optgroup {
+    background: #2a0a05;
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 600;
+  }
+  .close-panel {
+    display: block; margin: 20px auto;
+    background: var(--accent);
+    color: var(--bg-1);
+    border: none;
+    padding: 14px 36px;
+    border-radius: 28px;
+    font-family: 'Cinzel', serif;
+    font-size: 14px; letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  /* ---- CELEBRATION ---- */
+  .celebration {
+    position: fixed; inset: 0;
+    z-index: 200;
+    background: radial-gradient(ellipse at center, #fbbf24 0%, #ea580c 40%, #7c2d12 100%);
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    overflow: hidden;
+    animation: celebFade 0.8s ease;
+  }
+  .celebration.show { display: flex; }
+  @keyframes celebFade {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .celebration h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(80px, 24vw, 160px);
+    letter-spacing: 12px;
+    margin: 20px 0;
+    position: relative;
+    background: linear-gradient(
+      120deg,
+      #fde047 0%,
+      #fff 20%,
+      #fbbf24 35%,
+      #fff 50%,
+      #fde047 65%,
+      #fff 80%,
+      #fbbf24 100%
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+      0 0 30px rgba(253, 224, 71, 0.8),
+      0 0 60px rgba(255, 255, 255, 0.5);
+    filter: drop-shadow(0 6px 20px rgba(0,0,0,0.4));
+    animation: shimmerGold 3s linear infinite, pulseGlow108 2s ease-in-out infinite;
+    z-index: 2;
+  }
+  /* Glitter sparkles overlaid on the 108 */
+  .celebration h1::before,
+  .celebration h1::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    background-image:
+      radial-gradient(circle at 10% 20%, #fff 0, transparent 2px),
+      radial-gradient(circle at 30% 70%, #fde047 0, transparent 2px),
+      radial-gradient(circle at 55% 30%, #fff 0, transparent 2px),
+      radial-gradient(circle at 75% 80%, #fbbf24 0, transparent 2px),
+      radial-gradient(circle at 90% 40%, #fff 0, transparent 2px),
+      radial-gradient(circle at 20% 50%, #fde047 0, transparent 1.5px),
+      radial-gradient(circle at 65% 60%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 45% 85%, #fbbf24 0, transparent 1.5px),
+      radial-gradient(circle at 85% 15%, #fff 0, transparent 1.5px),
+      radial-gradient(circle at 5% 75%, #fde047 0, transparent 1.5px);
+    pointer-events: none;
+    animation: glitterTwinkle 1.2s ease-in-out infinite alternate;
+  }
+  .celebration h1::after {
+    animation-delay: 0.6s;
+    transform: scale(1.1) rotate(15deg);
+  }
+  @keyframes shimmerGold {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+  @keyframes pulseGlow108 {
+    0%, 100% {
+      filter: drop-shadow(0 6px 20px rgba(0,0,0,0.4)) drop-shadow(0 0 20px rgba(253,224,71,0.6));
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 6px 20px rgba(0,0,0,0.4)) drop-shadow(0 0 50px rgba(253,224,71,1));
+      transform: scale(1.04);
+    }
+  }
+  @keyframes glitterTwinkle {
+    0%   { opacity: 0.4; transform: scale(0.95) rotate(0deg); }
+    50%  { opacity: 1; transform: scale(1.05) rotate(5deg); }
+    100% { opacity: 0.6; transform: scale(1) rotate(-3deg); }
+  }
+  .celebration .om-big {
+    font-size: 35vmin;
+    color: #fef3c7;
+    text-shadow: 0 0 60px rgba(255,255,255,0.8);
+    animation: omZoomIn 1.6s cubic-bezier(0.25, 0.8, 0.3, 1) forwards, pulseGlow 2.5s ease-in-out 1.6s infinite;
+    font-family: serif;
+    line-height: 1;
+    transform-origin: center;
+  }
+  @keyframes omZoomIn {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    80%  { transform: scale(0.95); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .celebration .sub {
+    color: #fef3c7;
+    font-size: 20px; letter-spacing: 4px;
+    margin-top: 10px;
+    opacity: 0.9;
+  }
+  @keyframes pulseGlow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+  }
+  .celebration .dismiss {
+    margin-top: 30px;
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    border: 2px solid #fef3c7;
+    padding: 14px 30px;
+    border-radius: 28px;
+    font-family: 'Cinzel', serif;
+    font-size: 14px; letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .chant-text {
+    color: #fef3c7;
+    font-family: serif;
+    font-size: clamp(28px, 7vw, 44px);
+    letter-spacing: 4px;
+    margin-top: 24px;
+    min-height: 60px;
+    text-align: center;
+    text-shadow: 0 0 20px rgba(255,255,255,0.5);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .chant-text.show { opacity: 1; }
+  .chant-text .syllable {
+    display: inline-block;
+    transition: all 0.4s ease;
+    margin: 0 4px;
+  }
+  .chant-text .syllable.active {
+    color: #fff;
+    transform: scale(1.3);
+    text-shadow: 0 0 30px #fde047, 0 0 50px #fff;
+  }
+  .firework {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  @keyframes burst {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+  .firework.trail {
+    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+  }
+  .sparkle {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 8px #fff, 0 0 16px #fde047;
+    pointer-events: none;
+    animation: twinkle 1.5s ease-out forwards;
+  }
+  @keyframes twinkle {
+    0% { transform: scale(0); opacity: 0; }
+    20% { transform: scale(2); opacity: 1; }
+    100% { transform: scale(0.5); opacity: 0; }
+  }
+  .petal {
+    position: absolute;
+    pointer-events: none;
+    animation: fall linear forwards;
+    will-change: transform;
+  }
+  .petal.swirl {
+    animation: fallSwirl linear forwards;
+  }
+  .petal.drift {
+    animation: fallDrift linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(115vh) rotate(720deg); opacity: 0; }
+  }
+  @keyframes fallSwirl {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    25%  { transform: translate(40px, 25vh) rotate(180deg); }
+    50%  { transform: translate(-30px, 50vh) rotate(360deg); }
+    75%  { transform: translate(40px, 75vh) rotate(540deg); }
+    100% { transform: translate(0, 115vh) rotate(720deg); opacity: 0; }
+  }
+  @keyframes fallDrift {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--drift, 80px), 115vh) rotate(900deg); opacity: 0; }
+  }
+  .bloom {
+    position: absolute;
+    pointer-events: none;
+    animation: bloomPop 2s ease-out forwards;
+    transform-origin: center;
+  }
+  @keyframes bloomPop {
+    0%   { transform: scale(0) rotate(0deg); opacity: 0; }
+    20%  { transform: scale(1.4) rotate(40deg); opacity: 1; }
+    60%  { transform: scale(1) rotate(80deg); opacity: 1; }
+    100% { transform: scale(1.6) rotate(120deg); opacity: 0; }
+  }
+  .ring-burst {
+    position: absolute;
+    border: 3px solid;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: ringExpand 1.4s ease-out forwards;
+  }
+  @keyframes ringExpand {
+    0%   { width: 0; height: 0; opacity: 1; border-width: 4px; }
+    100% { width: 400px; height: 400px; opacity: 0; border-width: 1px; transform: translate(-200px, -200px); }
+  }
+
+  /* iPhone install hint */
+  .install-hint {
+    position: fixed; bottom: 20px; left: 16px; right: 16px;
+    background: rgba(0,0,0,0.85);
+    color: var(--ink);
+    padding: 14px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--accent);
+    font-size: 13px;
+    z-index: 50;
+    display: none;
+    backdrop-filter: blur(10px);
+  }
+  .install-hint.show { display: block; }
+  .install-hint b { color: var(--accent-2); }
+  .install-hint .x {
+    position: absolute; top: 6px; right: 12px;
+    color: var(--accent-2); cursor: pointer; font-size: 18px;
+  }
+</style>
+</head>
+<body data-theme="dawn">
+
+<div class="app">
+  <header class="header">
+    <button class="icon-btn" id="resetBtn" title="Reset">↺</button>
+    <div class="title">प्रदक्षिणा</div>
+    <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+  </header>
+
+  <div class="temple-wrap">
+    <!-- Hindu temple SVG -->
+    <svg class="temple-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Base platform -->
+      <rect class="body" x="20" y="170" width="160" height="20" rx="2"/>
+      <rect class="accent" x="20" y="168" width="160" height="4"/>
+      <!-- Main mandapa -->
+      <rect class="body" x="40" y="120" width="120" height="50"/>
+      <!-- Pillars -->
+      <rect class="accent" x="50" y="125" width="6" height="42"/>
+      <rect class="accent" x="72" y="125" width="6" height="42"/>
+      <rect class="accent" x="122" y="125" width="6" height="42"/>
+      <rect class="accent" x="144" y="125" width="6" height="42"/>
+      <!-- Door arch -->
+      <path d="M 88 167 Q 88 140 100 140 Q 112 140 112 167 Z" fill="var(--bg-2)"/>
+      <!-- Tier 1 -->
+      <polygon class="body" points="35,120 100,90 165,120"/>
+      <rect class="accent" x="40" y="115" width="120" height="3"/>
+      <!-- Tier 2 -->
+      <rect class="body" x="60" y="80" width="80" height="30"/>
+      <polygon class="body" points="55,80 100,55 145,80"/>
+      <rect class="accent" x="62" y="75" width="76" height="3"/>
+      <!-- Shikhara (tower) -->
+      <rect class="body" x="80" y="48" width="40" height="20"/>
+      <polygon class="body" points="78,48 100,18 122,48"/>
+      <!-- Kalash on top -->
+      <circle class="dome" cx="100" cy="14" r="5"/>
+      <rect class="dome" x="98.5" y="4" width="3" height="8"/>
+      <polygon class="dome" points="100,0 102,4 98,4"/>
+      <!-- Decorative dots -->
+      <circle class="dome" cx="100" cy="100" r="2.5"/>
+      <circle class="dome" cx="100" cy="65" r="2"/>
+    </svg>
+  </div>
+
+  <div class="counter-area">
+    <div class="label">Pradakshinas</div>
+    <div class="count" id="count">0</div>
+    <div class="of-108">/ 108</div>
+  </div>
+
+  <div class="tap-zone">
+    <button class="tap-btn" id="tapBtn"><span>TAP</span></button>
+  </div>
+
+  <div class="actions">
+    <button class="pill" id="undoBtn">Undo</button>
+    <button class="pill" id="clearBtn">Clear</button>
+    <button class="pill" id="muteBtn">🔊 On</button>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="panel" id="panel">
+  <h2>Settings</h2>
+
+  <div class="section">
+    <h3>Theme & Wallpaper</h3>
+    <div class="swatches" id="swatches">
+      <div class="swatch" data-theme="dawn"    style="background:linear-gradient(135deg,#7a1a0a,#f59e0b)"><span>Dawn</span></div>
+      <div class="swatch" data-theme="dusk"    style="background:linear-gradient(135deg,#4c1d95,#fbbf24)"><span>Dusk</span></div>
+      <div class="swatch" data-theme="forest"  style="background:linear-gradient(135deg,#14532d,#fbbf24)"><span>Forest</span></div>
+      <div class="swatch" data-theme="ganga"   style="background:linear-gradient(135deg,#075985,#facc15)"><span>Ganga</span></div>
+      <div class="swatch" data-theme="saffron" style="background:linear-gradient(135deg,#c2410c,#fde047)"><span>Saffron</span></div>
+      <div class="swatch" data-theme="night"   style="background:linear-gradient(135deg,#020617,#e0c068)"><span>Night</span></div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top: 30px;">
+    <h3>Sound for each Pradakshina</h3>
+    <div class="sound-row" style="flex-direction:column; align-items:stretch; gap:12px;">
+      <select id="soundSelect" class="sound-select"></select>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="mini-btn" id="previewSoundBtn">▶ Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Your Custom Tap Sounds</h3>
+    <div class="sound-row" style="flex-direction:column; align-items:stretch; gap:10px;">
+      <span class="name" style="font-size:13px; opacity:0.85;">Upload your own audio files (real temple bell, conch, mantra, etc.) to use as the tap sound. Up to 6 custom sounds.</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="mini-btn" id="uploadTapSoundBtn">+ Upload Tap Sound</button>
+      </div>
+      <input type="file" id="tapSoundFile" accept="audio/*" style="display:none;" />
+      <div id="customTapList" class="sounds" style="margin-top: 6px;"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Celebration Chant Audio</h3>
+    <div class="sound-row" style="flex-direction:column; align-items:stretch; gap:10px;">
+      <span class="name" style="font-size:13px; opacity:0.85;">Default: synthesized "Om Namah Shivaya" hum with bells. Upload your own MP3 chant to use instead.</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="mini-btn" id="useDefaultChant">Use Default Chant</button>
+        <button class="mini-btn" id="uploadChantBtn">Upload My Chant</button>
+        <button class="mini-btn" id="previewChant">▶ Preview</button>
+      </div>
+      <div id="chantStatus" style="font-size:12px; opacity:0.75; color:var(--accent-2);">Using: Default synthesized chant</div>
+      <input type="file" id="chantFile" accept="audio/*" style="display:none;" />
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Vibration</h3>
+    <div class="sound-row">
+      <span class="name">Haptic feedback on tap</span>
+      <div class="controls">
+        <button class="mini-btn" data-haptic="on">On</button>
+        <button class="mini-btn" data-haptic="off">Off</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="close-panel" id="closePanel">Done</button>
+</div>
+
+<!-- CELEBRATION -->
+<div class="celebration" id="celebration">
+  <div class="om-big">ॐ</div>
+  <h1>108!</h1>
+  <div class="sub">SHUBH PRADAKSHINA · पूर्ण</div>
+  <div class="chant-text" id="chantText"></div>
+  <button class="dismiss" id="dismissCeleb">Begin Again</button>
+</div>
+
+<!-- iOS install hint -->
+<div class="install-hint" id="installHint">
+  <span class="x" id="closeHint">×</span>
+  <b>Install on iPhone:</b> Tap the <b>Share</b> button in Safari, then <b>"Add to Home Screen"</b>. Open from your home screen for full-screen mode.
+</div>
+
+<script>
+/* ============================================================
+   PRADAKSHINA COUNTER
+   - Persists state via localStorage
+   - Web Audio API generates all sounds (no external files)
+   - Works offline once loaded
+============================================================ */
+
+const STORAGE = 'pradakshina_v1';
+const MAX = 108;
+
+const state = {
+  count: 0,
+  theme: 'dawn',
+  sound: 'bell',
+  haptic: true,
+  muted: false,
+};
+
+// Load saved state
+try {
+  const saved = JSON.parse(localStorage.getItem(STORAGE) || '{}');
+  Object.assign(state, saved);
+} catch(e) {}
+
+const $ = id => document.getElementById(id);
+const countEl = $('count');
+const tapBtn = $('tapBtn');
+const panel = $('panel');
+
+function save() {
+  try { localStorage.setItem(STORAGE, JSON.stringify(state)); } catch(e) {}
+}
+
+function applyTheme() {
+  document.body.setAttribute('data-theme', state.theme);
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.theme === state.theme);
+  });
+}
+
+function render() {
+  countEl.textContent = state.count;
+  countEl.classList.remove('bump');
+  void countEl.offsetWidth; // reflow
+  countEl.classList.add('bump');
+}
+
+/* ---------- AUDIO (Web Audio API) ---------- */
+let audioCtx;
+function ctx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playTone({type='sine', freq=440, duration=0.5, attack=0.01, decay=0.4, vol=0.3, harmonics=[]}) {
+  if (state.muted) return;
+  const c = ctx();
+  const now = c.currentTime;
+  const master = c.createGain();
+  master.gain.setValueAtTime(0, now);
+  master.gain.linearRampToValueAtTime(vol, now + attack);
+  master.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  master.connect(c.destination);
+
+  const make = (f, v=1) => {
+    const o = c.createOscillator();
+    o.type = type; o.frequency.value = f;
+    const g = c.createGain();
+    g.gain.value = v;
+    o.connect(g); g.connect(master);
+    o.start(now); o.stop(now + duration);
+  };
+  make(freq, 1);
+  harmonics.forEach(([m, v]) => make(freq * m, v));
+}
+
+const SOUNDS = {
+  bell: (rapid) => playTone({type:'sine', freq:880, duration: rapid ? 0.5 : 1.5, attack:0.005, vol:0.35, harmonics:[[2, 0.3],[3, 0.15],[0.5, 0.2]]}),
+  conch: (rapid) => playTone({type:'sawtooth', freq:220, duration: rapid ? 0.4 : 0.8, attack:0.05, vol:0.2, harmonics:[[1.5, 0.4],[2, 0.3]]}),
+  chime: (rapid) => playTone({type:'triangle', freq:1320, duration: rapid ? 0.3 : 0.7, attack:0.005, vol:0.25, harmonics:[[2, 0.4]]}),
+  drum: () => playTone({type:'sine', freq:120, duration:0.3, attack:0.005, vol:0.5, harmonics:[[0.5, 0.6]]}),
+  om: (rapid) => playTone({type:'sine', freq:136.1, duration: rapid ? 0.6 : 1.8, attack:0.1, vol:0.3, harmonics:[[2, 0.4],[3, 0.2],[4, 0.1]]}),
+  silent: () => {},
+};
+
+const SOUND_LIST = [
+  {id:'bell', name:'Temple Bell 🔔'},
+  {id:'om', name:'Om Hum ॐ'},
+  {id:'conch', name:'Conch (Shankha) 🐚'},
+  {id:'chime', name:'Brass Chime ✨'},
+  {id:'drum', name:'Mridangam Drum 🥁'},
+  {id:'silent', name:'Silent'},
+];
+
+/* ---------- CUSTOM TAP SOUNDS (persisted via IndexedDB) ---------- */
+const MAX_CUSTOM_SOUNDS = 6;
+const customSounds = {}; // id -> {name, buffer}
+let dbInstance = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (dbInstance) return resolve(dbInstance);
+    const req = indexedDB.open('pradakshina_sounds', 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('sounds')) {
+        db.createObjectStore('sounds', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => { dbInstance = e.target.result; resolve(dbInstance); };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveSoundToDB(id, name, arrayBuffer) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('sounds', 'readwrite');
+    tx.objectStore('sounds').put({ id, name, data: arrayBuffer });
+    tx.oncomplete = resolve;
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function loadAllSoundsFromDB() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('sounds', 'readonly');
+      const req = tx.objectStore('sounds').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  } catch(e) {
+    console.warn('IndexedDB unavailable', e);
+    return [];
+  }
+}
+
+async function deleteSoundFromDB(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('sounds', 'readwrite');
+    tx.objectStore('sounds').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function decodeAndStoreSound(id, name, arrayBuffer) {
+  const c = ctx();
+  // decodeAudioData consumes the ArrayBuffer, so clone it first
+  const bufferCopy = arrayBuffer.slice(0);
+  const audioBuffer = await c.decodeAudioData(arrayBuffer);
+  customSounds[id] = { name, buffer: audioBuffer };
+  await saveSoundToDB(id, name, bufferCopy);
+}
+
+async function loadCustomSoundsOnStart() {
+  const records = await loadAllSoundsFromDB();
+  const c = ctx();
+  for (const r of records) {
+    try {
+      const buf = await c.decodeAudioData(r.data.slice(0));
+      customSounds[r.id] = { name: r.name, buffer: buf };
+    } catch(e) {
+      console.warn('Failed to decode stored sound', r.id, e);
+    }
+  }
+}
+
+function playCustomSound(id, rapid) {
+  const entry = customSounds[id];
+  if (!entry) return false;
+  const c = ctx();
+  const src = c.createBufferSource();
+  src.buffer = entry.buffer;
+  const g = c.createGain();
+  g.gain.value = 0.85;
+  src.connect(g);
+  g.connect(c.destination);
+  // On rapid taps, fade out after 400ms so taps don't pile into mush
+  if (rapid) {
+    const stopAt = c.currentTime + 0.4;
+    g.gain.setValueAtTime(0.85, c.currentTime + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.001, stopAt);
+    src.stop(stopAt + 0.05);
+  }
+  src.start();
+  return true;
+}
+
+/* Track last play time to detect rapid tapping */
+let lastPlayTime = 0;
+function playPradakshinaSound() {
+  const now = performance.now();
+  const rapidTap = (now - lastPlayTime) < 250;
+  lastPlayTime = now;
+
+  // Custom sound IDs are prefixed with "custom_"
+  if (state.sound && state.sound.startsWith('custom_')) {
+    if (playCustomSound(state.sound, rapidTap)) return;
+    // fall back to bell if missing
+  }
+  const s = SOUNDS[state.sound] || SOUNDS.bell;
+  s(rapidTap);
+}
+
+/* ---------- OM NAMAH SHIVAYA SYNTHESIZED CHANT ----------
+   Layered male-range drone (110Hz fundamental + harmonics)
+   timed to the 5 syllables: Om - Na - mah - Shi - va - ya
+   with temple bell strikes between phrases.
+*/
+const MANTRA_SYLLABLES = ['ॐ', 'न', 'मः', 'शि', 'वा', 'य'];
+const MANTRA_TIMING = [
+  // [syllable index, start time in seconds, duration, base freq]
+  [0, 0.0,  1.4, 110],   // OMmmm (long)
+  [1, 1.5,  0.5, 130],   // Na
+  [2, 2.0,  0.6, 123],   // Mah
+  [3, 2.7,  0.5, 146],   // Shi
+  [4, 3.2,  0.5, 138],   // Va
+  [5, 3.7,  1.0, 110],   // Ya (long)
+];
+
+function playMaleVoiceSyllable(c, freq, startTime, duration) {
+  // Layered oscillators to approximate vocal timbre
+  const master = c.createGain();
+  master.gain.setValueAtTime(0, startTime);
+  master.gain.linearRampToValueAtTime(0.25, startTime + 0.15);
+  master.gain.setValueAtTime(0.25, startTime + duration - 0.3);
+  master.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+  // Subtle vibrato
+  const vibrato = c.createOscillator();
+  vibrato.frequency.value = 5;
+  const vibratoGain = c.createGain();
+  vibratoGain.gain.value = 3;
+  vibrato.connect(vibratoGain);
+  vibrato.start(startTime);
+  vibrato.stop(startTime + duration);
+
+  // Formant-like filter to shape vocal character
+  const filter = c.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = freq * 4;
+  filter.Q.value = 2;
+
+  // Fundamental + harmonics (typical male vocal harmonic series)
+  const harmonics = [
+    {mult: 1, gain: 0.5, type: 'sawtooth'},
+    {mult: 2, gain: 0.3, type: 'sine'},
+    {mult: 3, gain: 0.15, type: 'sine'},
+    {mult: 4, gain: 0.08, type: 'sine'},
+    {mult: 5, gain: 0.05, type: 'triangle'},
+  ];
+
+  harmonics.forEach(h => {
+    const o = c.createOscillator();
+    o.type = h.type;
+    o.frequency.value = freq * h.mult;
+    vibratoGain.connect(o.frequency);
+    const g = c.createGain();
+    g.gain.value = h.gain;
+    o.connect(g);
+    g.connect(filter);
+    o.start(startTime);
+    o.stop(startTime + duration);
+  });
+
+  filter.connect(master);
+  master.connect(c.destination);
+}
+
+function playTempleBellAt(c, startTime, vol = 0.3) {
+  const master = c.createGain();
+  master.gain.setValueAtTime(0, startTime);
+  master.gain.linearRampToValueAtTime(vol, startTime + 0.005);
+  master.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
+  master.connect(c.destination);
+
+  // Bell partials: inharmonic to give metallic quality
+  const partials = [
+    {f: 880, g: 1.0},
+    {f: 1320, g: 0.4},
+    {f: 1760, g: 0.25},
+    {f: 2400, g: 0.15},
+    {f: 440, g: 0.5},
+  ];
+  partials.forEach(p => {
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = p.f;
+    const g = c.createGain();
+    g.gain.value = p.g;
+    o.connect(g);
+    g.connect(master);
+    o.start(startTime);
+    o.stop(startTime + 2.5);
+  });
+}
+
+/* Chant text animation timing (matches MANTRA_TIMING) */
+function animateChantText(repetitions = 3) {
+  const el = $('chantText');
+  if (!el) return;
+  el.innerHTML = MANTRA_SYLLABLES.map((s, i) =>
+    `<span class="syllable" data-i="${i}">${s}</span>`
+  ).join(' ');
+  el.classList.add('show');
+
+  let cycle = 0;
+  const cycleDuration = 5000; // matches one full mantra
+  const runCycle = () => {
+    if (cycle >= repetitions) {
+      setTimeout(() => el.classList.remove('show'), 1000);
+      return;
+    }
+    MANTRA_TIMING.forEach(([syllableIdx, startSec]) => {
+      setTimeout(() => {
+        el.querySelectorAll('.syllable').forEach(s => s.classList.remove('active'));
+        const target = el.querySelector(`[data-i="${syllableIdx}"]`);
+        if (target) target.classList.add('active');
+      }, startSec * 1000);
+    });
+    cycle++;
+    setTimeout(runCycle, cycleDuration);
+  };
+  runCycle();
+}
+
+/* Custom uploaded chant audio */
+let customChantBuffer = null;
+let customChantSource = null;
+
+async function loadCustomChant(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const c = ctx();
+  customChantBuffer = await c.decodeAudioData(arrayBuffer);
+  try {
+    localStorage.setItem('chant_filename', file.name);
+  } catch(e) {}
+  state.useCustomChant = true;
+  save();
+  $('chantStatus').textContent = `Using: ${file.name}`;
+}
+
+function playCustomChant() {
+  if (!customChantBuffer) return false;
+  const c = ctx();
+  customChantSource = c.createBufferSource();
+  customChantSource.buffer = customChantBuffer;
+  const g = c.createGain();
+  g.gain.value = 0.7;
+  customChantSource.connect(g);
+  g.connect(c.destination);
+  customChantSource.start();
+  return true;
+}
+
+function stopCustomChant() {
+  if (customChantSource) {
+    try { customChantSource.stop(); } catch(e) {}
+    customChantSource = null;
+  }
+}
+
+function playCelebration() {
+  if (state.muted) return;
+  const c = ctx();
+  const now = c.currentTime;
+
+  // If user uploaded a custom chant, play it
+  if (state.useCustomChant && customChantBuffer) {
+    playCustomChant();
+    animateChantText(5);
+    return;
+  }
+
+  // Otherwise: synthesized Om Namah Shivaya
+  // Repeat the mantra 3 times over ~15 seconds
+  for (let rep = 0; rep < 3; rep++) {
+    const repOffset = rep * 5;
+
+    // Temple bell strike at start of each repetition
+    playTempleBellAt(c, now + repOffset, 0.35);
+
+    // Each syllable
+    MANTRA_TIMING.forEach(([_, startSec, duration, freq]) => {
+      playMaleVoiceSyllable(c, freq, now + repOffset + startSec, duration);
+    });
+
+    // Bell punctuation at the end
+    playTempleBellAt(c, now + repOffset + 4.5, 0.2);
+  }
+
+  // Animate the chant text in sync
+  animateChantText(3);
+}
+
+/* ---------- HAPTICS ---------- */
+function haptic(ms = 30) {
+  if (state.haptic && navigator.vibrate) navigator.vibrate(ms);
+}
+
+/* ---------- TAP ---------- */
+function increment() {
+  if (state.count >= MAX) return;
+  state.count++;
+  playPradakshinaSound();
+  haptic(state.count === MAX ? 200 : 25);
+  render();
+  save();
+  if (state.count >= MAX) celebrate();
+}
+
+function undo() {
+  if (state.count > 0) {
+    state.count--;
+    haptic(15);
+    render();
+    save();
+  }
+}
+
+function reset() {
+  if (state.count === 0) return;
+  if (confirm(`Reset count from ${state.count} to 0?`)) {
+    state.count = 0;
+    render();
+    save();
+  }
+}
+
+/* ---------- CELEBRATION ---------- */
+function celebrate() {
+  const cel = $('celebration');
+  cel.classList.add('show');
+  playCelebration();
+  haptic([100, 60, 100, 60, 200, 60, 200]);
+
+  const colors = ['#fde047','#fb923c','#f97316','#fef3c7','#fbbf24','#fff','#ec4899','#a855f7','#ef4444','#22d3ee'];
+
+  /* ---------- FIREWORKS: 200 particles in clustered bursts ---------- */
+  // Create 12 burst clusters at different points in time and space
+  const burstCount = 12;
+  for (let b = 0; b < burstCount; b++) {
+    setTimeout(() => {
+      const cx = Math.random() * 100;
+      const cy = Math.random() * 60 + 15;
+      const burstColor = colors[Math.floor(Math.random() * colors.length)];
+
+      // Expanding ring shockwave
+      const ring = document.createElement('div');
+      ring.className = 'ring-burst';
+      ring.style.left = cx + '%';
+      ring.style.top = cy + '%';
+      ring.style.borderColor = burstColor;
+      ring.style.boxShadow = `0 0 30px ${burstColor}`;
+      cel.appendChild(ring);
+      setTimeout(() => ring.remove(), 1500);
+
+      // 18 particles per burst, radiating outward
+      const particles = 18;
+      for (let i = 0; i < particles; i++) {
+        const f = document.createElement('div');
+        f.className = 'firework trail';
+        f.style.left = cx + '%';
+        f.style.top = cy + '%';
+        const c = Math.random() < 0.7 ? burstColor : colors[Math.floor(Math.random() * colors.length)];
+        f.style.background = c;
+        f.style.color = c;
+        const angle = (i / particles) * Math.PI * 2 + Math.random() * 0.3;
+        const dist = 150 + Math.random() * 200;
+        f.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        f.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        f.style.animation = `burst ${1.2 + Math.random() * 0.8}s cubic-bezier(0.1, 0.9, 0.3, 1) forwards`;
+        f.style.width = (4 + Math.random() * 4) + 'px';
+        f.style.height = f.style.width;
+        cel.appendChild(f);
+        setTimeout(() => f.remove(), 2200);
+      }
+
+      // Sparkles around burst center
+      for (let s = 0; s < 12; s++) {
+        const sp = document.createElement('div');
+        sp.className = 'sparkle';
+        sp.style.left = `calc(${cx}% + ${(Math.random() - 0.5) * 80}px)`;
+        sp.style.top = `calc(${cy}% + ${(Math.random() - 0.5) * 80}px)`;
+        sp.style.animationDelay = (Math.random() * 0.5) + 's';
+        cel.appendChild(sp);
+        setTimeout(() => sp.remove(), 2200);
+      }
+    }, b * 350 + Math.random() * 200);
+  }
+
+  /* ---------- BLOOMING FLOWERS: large flowers that pop on screen ---------- */
+  const bloomFlowers = ['🌺','🌸','🪷','🌼','🌻','💐','🏵️','🌷'];
+  for (let i = 0; i < 30; i++) {
+    setTimeout(() => {
+      const bloom = document.createElement('div');
+      bloom.className = 'bloom';
+      bloom.textContent = bloomFlowers[Math.floor(Math.random() * bloomFlowers.length)];
+      bloom.style.left = (Math.random() * 90 + 5) + '%';
+      bloom.style.top = (Math.random() * 80 + 10) + '%';
+      bloom.style.fontSize = (40 + Math.random() * 50) + 'px';
+      bloom.style.filter = `drop-shadow(0 0 12px rgba(255,255,255,0.6))`;
+      cel.appendChild(bloom);
+      setTimeout(() => bloom.remove(), 2200);
+    }, 400 + i * 150);
+  }
+
+  /* ---------- FALLING PETALS RAIN: 150 petals over 8 seconds ---------- */
+  const petals = ['🌺','🌸','🪷','🌼','🌻','🌷','🏵️','💮','✨','⭐','🌟'];
+  for (let i = 0; i < 150; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      const variant = Math.random();
+      p.className = variant < 0.4 ? 'petal swirl' : variant < 0.75 ? 'petal drift' : 'petal';
+      p.textContent = petals[Math.floor(Math.random() * petals.length)];
+      p.style.left = (Math.random() * 110 - 5) + '%';
+      p.style.top = '-15vh';
+      p.style.fontSize = (16 + Math.random() * 28) + 'px';
+      p.style.opacity = 0.7 + Math.random() * 0.3;
+      p.style.setProperty('--drift', ((Math.random() - 0.5) * 200) + 'px');
+      p.style.animationDuration = (3.5 + Math.random() * 4) + 's';
+      p.style.filter = `drop-shadow(0 2px 4px rgba(0,0,0,0.2))`;
+      cel.appendChild(p);
+      setTimeout(() => p.remove(), 8000);
+    }, i * 60);
+  }
+
+  /* ---------- GRAND FINALE: massive central burst at 4 seconds ---------- */
+  setTimeout(() => {
+    const finalColors = ['#fde047','#fff','#fbbf24','#fb923c'];
+    // Center mega-burst
+    for (let i = 0; i < 80; i++) {
+      const f = document.createElement('div');
+      f.className = 'firework trail';
+      f.style.left = '50%';
+      f.style.top = '45%';
+      const c = finalColors[Math.floor(Math.random() * finalColors.length)];
+      f.style.background = c;
+      f.style.color = c;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 200 + Math.random() * 350;
+      f.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      f.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+      f.style.animation = `burst ${1.5 + Math.random() * 0.6}s cubic-bezier(0.1, 0.9, 0.3, 1) forwards`;
+      f.style.width = (5 + Math.random() * 5) + 'px';
+      f.style.height = f.style.width;
+      cel.appendChild(f);
+      setTimeout(() => f.remove(), 2500);
+    }
+    haptic([200, 100, 300]);
+  }, 4000);
+}
+
+function dismissCelebration() {
+  $('celebration').classList.remove('show');
+  $('chantText').classList.remove('show');
+  stopCustomChant();
+  state.count = 0;
+  render();
+  save();
+}
+
+/* ---------- SETTINGS ---------- */
+function buildSoundList() {
+  const sel = $('soundSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+
+  // Built-in sounds group
+  const builtinGroup = document.createElement('optgroup');
+  builtinGroup.label = '— Built-in —';
+  SOUND_LIST.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    if (state.sound === s.id) opt.selected = true;
+    builtinGroup.appendChild(opt);
+  });
+  sel.appendChild(builtinGroup);
+
+  // Custom sounds group (only if any exist)
+  const customIds = Object.keys(customSounds);
+  if (customIds.length > 0) {
+    const customGroup = document.createElement('optgroup');
+    customGroup.label = '— Your Uploads —';
+    customIds.forEach(id => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = '🎵 ' + customSounds[id].name;
+      if (state.sound === id) opt.selected = true;
+      customGroup.appendChild(opt);
+    });
+    sel.appendChild(customGroup);
+  }
+
+  // If currently selected sound is a custom one that no longer exists, fall back
+  if (state.sound && state.sound.startsWith('custom_') && !customSounds[state.sound]) {
+    state.sound = 'bell';
+    save();
+    sel.value = 'bell';
+  }
+}
+
+function buildCustomSoundList() {
+  const wrap = $('customTapList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const ids = Object.keys(customSounds);
+  if (ids.length === 0) {
+    wrap.innerHTML = '<div style="font-size:12px; opacity:0.6; padding:6px 0;">No custom sounds yet. Upload an MP3, WAV, or M4A file. Uploaded sounds will appear in the dropdown above.</div>';
+    return;
+  }
+  ids.forEach(id => {
+    const entry = customSounds[id];
+    const row = document.createElement('div');
+    row.className = 'sound-row';
+    row.innerHTML = `
+      <span class="name" style="font-size:14px; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🎵 ${entry.name}</span>
+      <div class="controls">
+        <button class="mini-btn preview" data-id="${id}">▶</button>
+        <button class="mini-btn delete" data-id="${id}" style="color:#fca5a5; border-color:rgba(252,165,165,0.4);">✕</button>
+      </div>`;
+    wrap.appendChild(row);
+  });
+
+  wrap.querySelectorAll('.preview').forEach(b => {
+    b.onclick = () => playCustomSound(b.dataset.id);
+  });
+  wrap.querySelectorAll('.delete').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      if (!confirm(`Delete "${customSounds[id].name}"?`)) return;
+      await deleteSoundFromDB(id);
+      delete customSounds[id];
+      // If this was the selected sound, fall back to bell
+      if (state.sound === id) {
+        state.sound = 'bell';
+        save();
+      }
+      buildSoundList();
+      buildCustomSoundList();
+    };
+  });
+}
+
+function updateHapticBtns() {
+  document.querySelectorAll('[data-haptic]').forEach(b => {
+    b.classList.toggle('selected',
+      (b.dataset.haptic === 'on' && state.haptic) ||
+      (b.dataset.haptic === 'off' && !state.haptic));
+  });
+}
+
+/* ---------- WIRE UP ---------- */
+/* Use pointerdown for INSTANT response - no 300ms click delay, works for rapid taps */
+let pressedTimeout = null;
+function handleTapStart(e) {
+  e.preventDefault();
+  tapBtn.classList.add('pressed');
+  if (pressedTimeout) clearTimeout(pressedTimeout);
+  pressedTimeout = setTimeout(() => tapBtn.classList.remove('pressed'), 120);
+  increment();
+}
+
+// Pointer events cover both touch and mouse, fire instantly, support multi-touch
+if (window.PointerEvent) {
+  tapBtn.addEventListener('pointerdown', handleTapStart);
+} else {
+  // Fallback: touchstart for older browsers
+  tapBtn.addEventListener('touchstart', handleTapStart, { passive: false });
+  tapBtn.addEventListener('mousedown', handleTapStart);
+}
+// Prevent the synthetic click that follows touch from firing again
+tapBtn.addEventListener('click', (e) => e.preventDefault());
+
+$('undoBtn').onclick = undo;
+$('clearBtn').onclick = () => {
+  state.count = 0;
+  haptic(40);
+  render();
+  save();
+};
+$('resetBtn').onclick = reset;
+$('settingsBtn').onclick = () => panel.classList.add('open');
+$('closePanel').onclick = () => panel.classList.remove('open');
+$('dismissCeleb').onclick = dismissCelebration;
+
+$('muteBtn').onclick = (e) => {
+  state.muted = !state.muted;
+  e.target.textContent = state.muted ? '🔇 Off' : '🔊 On';
+  save();
+};
+
+document.querySelectorAll('.swatch').forEach(s => {
+  s.onclick = () => {
+    state.theme = s.dataset.theme;
+    applyTheme();
+    save();
+  };
+});
+
+document.querySelectorAll('[data-haptic]').forEach(b => {
+  b.onclick = () => {
+    state.haptic = b.dataset.haptic === 'on';
+    if (state.haptic) haptic(30);
+    updateHapticBtns();
+    save();
+  };
+});
+
+$('closeHint').onclick = () => $('installHint').classList.remove('show');
+
+/* Tap sound dropdown wiring */
+$('soundSelect').addEventListener('change', (e) => {
+  state.sound = e.target.value;
+  save();
+  // Play preview of the newly selected sound
+  if (state.sound.startsWith('custom_')) {
+    playCustomSound(state.sound);
+  } else {
+    SOUNDS[state.sound]?.();
+  }
+});
+
+$('previewSoundBtn').onclick = () => {
+  if (state.sound.startsWith('custom_')) {
+    playCustomSound(state.sound);
+  } else {
+    SOUNDS[state.sound]?.();
+  }
+};
+
+/* Custom chant upload wiring */
+const chantFileInput = $('chantFile');
+const chantStatus = $('chantStatus');
+
+if (state.useCustomChant && localStorage.getItem('chant_filename')) {
+  chantStatus.textContent = `Using: ${localStorage.getItem('chant_filename')} (re-upload after closing app)`;
+}
+
+$('uploadChantBtn').onclick = () => chantFileInput.click();
+
+chantFileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  chantStatus.textContent = 'Loading...';
+  try {
+    await loadCustomChant(file);
+  } catch(err) {
+    chantStatus.textContent = 'Error loading file. Try a different audio file.';
+    console.error(err);
+  }
+};
+
+$('useDefaultChant').onclick = () => {
+  state.useCustomChant = false;
+  customChantBuffer = null;
+  try { localStorage.removeItem('chant_filename'); } catch(e) {}
+  save();
+  chantStatus.textContent = 'Using: Default synthesized chant';
+};
+
+$('previewChant').onclick = () => {
+  stopCustomChant();
+  playCelebration();
+  // Stop preview after a few seconds
+  setTimeout(() => {
+    stopCustomChant();
+    $('chantText').classList.remove('show');
+  }, 6000);
+};
+
+/* Custom tap sound upload wiring */
+const tapSoundFileInput = $('tapSoundFile');
+
+$('uploadTapSoundBtn').onclick = () => {
+  if (Object.keys(customSounds).length >= MAX_CUSTOM_SOUNDS) {
+    alert(`Maximum ${MAX_CUSTOM_SOUNDS} custom sounds. Delete one first.`);
+    return;
+  }
+  tapSoundFileInput.click();
+};
+
+tapSoundFileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Size guard - tap sounds should be short
+  if (file.size > 5 * 1024 * 1024) {
+    alert('File too large. Please use a clip under 5 MB (tap sounds should be short).');
+    tapSoundFileInput.value = '';
+    return;
+  }
+
+  const id = 'custom_' + Date.now();
+  const name = file.name.replace(/\.[^.]+$/, '');
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    await decodeAndStoreSound(id, name, arrayBuffer);
+    // Auto-select the newly uploaded sound
+    state.sound = id;
+    save();
+    buildSoundList();
+    buildCustomSoundList();
+    // Preview
+    playCustomSound(id);
+  } catch(err) {
+    alert('Could not load that audio file. Try MP3, WAV, M4A, or OGG.');
+    console.error(err);
+  }
+  tapSoundFileInput.value = '';
+};
+
+/* iOS install hint - show once if running in Safari (not standalone) */
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+if (isIOS && !isStandalone && !localStorage.getItem('hint_dismissed')) {
+  setTimeout(() => $('installHint').classList.add('show'), 2000);
+  $('closeHint').addEventListener('click', () => localStorage.setItem('hint_dismissed', '1'));
+}
+
+// Init
+applyTheme();
+render();
+buildSoundList();
+buildCustomSoundList();
+updateHapticBtns();
+$('muteBtn').textContent = state.muted ? '🔇 Off' : '🔊 On';
+
+// Load any previously uploaded custom sounds from IndexedDB
+loadCustomSoundsOnStart().then(() => {
+  buildCustomSoundList();
+  buildSoundList();
+});
+
+// Prevent pinch-zoom but allow taps through normally
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Unlock audio on first user interaction (iOS requirement)
+document.addEventListener('touchstart', () => ctx(), {once: true});
+document.addEventListener('click', () => ctx(), {once: true});
+</script>
+</body>
+</html>
