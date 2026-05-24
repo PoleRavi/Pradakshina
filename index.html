@@ -1256,19 +1256,20 @@
   .reader-unsupported p { font-size: 14px; line-height: 1.6; opacity: 0.7; }
   .reader-counter-btn {
     flex: 0 0 auto;
-    margin: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 10px);
-    background: var(--accent);
-    color: var(--bg-1);
-    border: none;
-    padding: 14px 24px;
-    border-radius: 28px;
+    align-self: center;
+    margin: 8px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
+    background: rgba(0,0,0,0.3);
+    color: var(--accent-2);
+    border: 1px solid rgba(253,230,138,0.3);
+    padding: 9px 22px;
+    border-radius: 24px;
     font-family: 'Cinzel', serif;
-    font-size: 12px; letter-spacing: 3px;
+    font-size: 11px; letter-spacing: 2.5px;
     text-transform: uppercase;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
     -webkit-tap-highlight-color: transparent;
-    text-align: center;
     touch-action: manipulation;
   }
   .reader-counter-btn:active { transform: scale(0.97); }
@@ -1276,8 +1277,9 @@
   /* ---- FLOATING TAP BUTTON IN READER ---- */
   .reader-tap-btn {
     position: absolute;
-    right: 18px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 72px;
     height: 72px;
     border-radius: 50%;
@@ -1304,7 +1306,7 @@
     transition: transform 0.08s ease, box-shadow 0.2s ease;
   }
   .reader-tap-btn.pressed {
-    transform: scale(0.91);
+    transform: translateY(-50%) scale(0.91);
     box-shadow:
       0 0 0 3px rgba(245,158,11,0.2),
       0 0 44px rgba(245,158,11,0.65),
@@ -3086,14 +3088,18 @@ async function renderPDF(data, container) {
     scroll.style.cssText = 'overflow-y:auto;height:100%;background:#f0ece4;padding:10px;box-sizing:border-box;-webkit-overflow-scrolling:touch;';
     container.innerHTML = '';
     container.appendChild(scroll);
+    const dpr = window.devicePixelRatio || 1;
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const scale = Math.min((container.clientWidth - 20) / page.getViewport({ scale: 1 }).width, 2.5);
-      const viewport = page.getViewport({ scale });
+      const baseScale = Math.min((container.clientWidth - 20) / page.getViewport({ scale: 1 }).width, 2.5);
+      const viewport = page.getViewport({ scale: baseScale * dpr });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      canvas.style.cssText = 'width:100%;display:block;margin-bottom:10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.25);border-radius:3px;';
+      // CSS size = logical pixels so it fills the container width but renders at retina resolution
+      const cssW = Math.floor(viewport.width / dpr);
+      const cssH = Math.floor(viewport.height / dpr);
+      canvas.style.cssText = `width:${cssW}px;height:${cssH}px;display:block;margin:0 auto 10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.25);border-radius:3px;max-width:100%;`;
       scroll.appendChild(canvas);
       await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
     }
